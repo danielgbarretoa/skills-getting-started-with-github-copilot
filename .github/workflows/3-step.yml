@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Get response templates
         uses: actions/checkout@v5
@@ -58,44 +60,20 @@ jobs:
 
       # START: Check practical exercise
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v47
-        with:
-          base_sha: ${{ github.event.repository.default_branch }}
-          files: |
-            src/static/app.js
-            src/static/styles.css
+      - name: Fetch default branch
+        run: git fetch origin "${{ github.event.repository.default_branch }}" --depth=1
 
       - name: Check if app.js was modified
         id: check-app-js
         continue-on-error: true
-        uses: actions/github-script@v7
-        env:
-          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-          TARGET_FILE: src/static/app.js
-        with:
-          script: |
-            const changedFiles = process.env.CHANGED_FILES.split(' ');
-            const targetFile = process.env.TARGET_FILE;
-            if (!changedFiles.includes(targetFile)) {
-              core.setFailed(`${targetFile} was not modified`);
-            }
+        run: |
+          git diff --name-only "origin/${{ github.event.repository.default_branch }}...HEAD" | grep -qx "src/static/app.js"
 
       - name: Check if styles.css was modified
         id: check-styles-css
         continue-on-error: true
-        uses: actions/github-script@v7
-        env:
-          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-          TARGET_FILE: src/static/styles.css
-        with:
-          script: |
-            const changedFiles = process.env.CHANGED_FILES.split(' ');
-            const targetFile = process.env.TARGET_FILE;
-            if (!changedFiles.includes(targetFile)) {
-              core.setFailed(`${targetFile} was not modified`);
-            }
+        run: |
+          git diff --name-only "origin/${{ github.event.repository.default_branch }}...HEAD" | grep -qx "src/static/styles.css"
 
       - name: Update comment - step results
         uses: GrantBirki/comment@v2.1.1
@@ -109,14 +87,14 @@ jobs:
             step_number: 3
             results_table:
               - description: "Checked app.js for participant info"
-                passed: ${{ steps.check-app-js.outcome == 'success' }}
+                passed: ${{ steps.check-app-js.conclusion == 'success' }}
               - description: "Checked styles.css for participant info"
-                passed: ${{ steps.check-styles-css.outcome == 'success' }}
+                passed: ${{ steps.check-styles-css.conclusion == 'success' }}
 
       # END: Check practical exercise
 
       - name: Fail job if not all checks passed
-        if: contains(steps.*.outcome, 'failure')
+        if: contains(steps.*.conclusion, 'failure')
         run: exit 1
 
   post_next_step_content:
