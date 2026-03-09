@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const reportBody = document.getElementById("report-body");
+  const refreshReportButton = document.getElementById("refresh-report");
 
   function showMessage(text, type) {
     messageDiv.textContent = text;
@@ -92,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (response.ok) {
               showMessage(result.message, "success");
               await fetchActivities();
+              await fetchReport();
             } else {
               showMessage(result.detail || "Failed to unregister participant", "error");
             }
@@ -104,6 +107,35 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
       console.error("Error fetching activities:", error);
+    }
+  }
+
+  async function fetchReport() {
+    try {
+      const response = await fetch("/reports/students-by-club");
+      const report = await response.json();
+
+      if (!response.ok) {
+        throw new Error(report.detail || "Failed to load report");
+      }
+
+      const rows = report.rows || [];
+      if (!rows.length) {
+        reportBody.innerHTML = '<tr><td colspan="3">No report rows found.</td></tr>';
+        return;
+      }
+
+      reportBody.innerHTML = rows
+        .map((row) => {
+          const students = row.registered_students.length
+            ? row.registered_students.join("<br />")
+            : "No students";
+          return `<tr><td>${row.club}</td><td>${students}</td><td>${row.registered_count}</td></tr>`;
+        })
+        .join("");
+    } catch (error) {
+      reportBody.innerHTML = '<tr><td colspan="3">Failed to load report.</td></tr>';
+      console.error("Error loading report:", error);
     }
   }
 
@@ -128,6 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage(result.message, "success");
         signupForm.reset();
         await fetchActivities();
+        await fetchReport();
       } else {
         showMessage(result.detail || "An error occurred", "error");
       }
@@ -137,6 +170,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  refreshReportButton.addEventListener("click", async () => {
+    await fetchReport();
+  });
+
   // Initialize app
   fetchActivities();
+  fetchReport();
 });

@@ -164,6 +164,24 @@ def get_activities(db: Session = Depends(get_db)):
     return {row.name: serialize_activity(row) for row in rows}
 
 
+@app.get("/reports/students-by-club")
+def students_by_club_report(db: Session = Depends(get_db)):
+    rows = db.query(Activity).order_by(Activity.name.asc()).all()
+    report_rows = []
+
+    for activity in rows:
+        students = sorted([participant.email for participant in activity.participants])
+        report_rows.append(
+            {
+                "club": activity.name,
+                "registered_students": students,
+                "registered_count": len(students),
+            }
+        )
+
+    return {"rows": report_rows}
+
+
 @app.post("/activities/{activity_name}/signup")
 def signup_for_activity(activity_name: str, email: str, db: Session = Depends(get_db)):
     activity = db.query(Activity).filter(Activity.name == activity_name).first()

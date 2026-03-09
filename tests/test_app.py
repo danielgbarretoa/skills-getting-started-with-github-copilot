@@ -38,6 +38,30 @@ def test_get_activities_includes_new_clubs(client):
     assert "Science Club" in payload
 
 
+def test_students_by_club_report_shape(client):
+    response = client.get("/reports/students-by-club")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "rows" in payload
+    assert isinstance(payload["rows"], list)
+    assert any(row["club"] == "Chess Club" for row in payload["rows"])
+
+
+def test_students_by_club_report_updates_after_signup(client):
+    email = "report.student@mergington.edu"
+
+    signup_response = client.post("/activities/Swimming Club/signup", params={"email": email})
+    assert signup_response.status_code == 200
+
+    report_response = client.get("/reports/students-by-club")
+    assert report_response.status_code == 200
+
+    rows = report_response.json()["rows"]
+    swimming_row = next(row for row in rows if row["club"] == "Swimming Club")
+    assert email in swimming_row["registered_students"]
+
+
 def test_signup_success_adds_participant(client):
     email = "new.student@mergington.edu"
 
