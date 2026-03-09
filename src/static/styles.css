@@ -1,4 +1,5 @@
 * {
+  /* Base reset used by activity cards and signup form layout. */
   box-sizing: border-box;
   margin: 0;
   padding: 0;

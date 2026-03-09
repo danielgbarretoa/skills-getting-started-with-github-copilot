@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // UI updates happen on each fetch so cards stay in sync after signup/unregister actions.
   const activitiesList = document.getElementById("activities-list");
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
