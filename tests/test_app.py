@@ -1,18 +1,22 @@
-from copy import deepcopy
+import os
 
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app import activities, app
+os.environ["DATABASE_URL"] = "sqlite+pysqlite:///./test.db"
+
+from src.app import Activity, Base, SessionLocal, app, engine, seed_database
 
 
 @pytest.fixture(autouse=True)
-def reset_activities_state():
-    """Keep tests isolated since the app stores data in memory."""
-    original = deepcopy(activities)
+def reset_database_state():
+    """Keep tests isolated by resetting and re-seeding the test database."""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        seed_database(db)
     yield
-    activities.clear()
-    activities.update(original)
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
@@ -41,12 +45,16 @@ def test_signup_success_adds_participant(client):
 
     assert response.status_code == 200
     assert response.json() == {"message": f"Signed up {email} for Basketball Team"}
-    assert email in activities["Basketball Team"]["participants"]
+    with SessionLocal() as db:
+        activity = db.query(Activity).filter(Activity.name == "Basketball Team").first()
+        assert activity is not None
+        assert email in {participant.email for participant in activity.participants}
 
 
 def test_signup_duplicate_rejected(client):
     email = "already.joined@mergington.edu"
-    activities["Basketball Team"]["participants"] = [email]
+    first_signup = client.post("/activities/Basketball Team/signup", params={"email": email})
+    assert first_signup.status_code == 200
 
     response = client.post("/activities/Basketball Team/signup", params={"email": email})
 
@@ -63,13 +71,17 @@ def test_signup_unknown_activity_returns_404(client):
 
 def test_unregister_success_removes_participant(client):
     email = "remove.me@mergington.edu"
-    activities["Basketball Team"]["participants"] = [email]
+    first_signup = client.post("/activities/Basketball Team/signup", params={"email": email})
+    assert first_signup.status_code == 200
 
     response = client.delete("/activities/Basketball Team/signup", params={"email": email})
 
     assert response.status_code == 200
     assert response.json() == {"message": f"Removed {email} from Basketball Team"}
-    assert email not in activities["Basketball Team"]["participants"]
+    with SessionLocal() as db:
+        activity = db.query(Activity).filter(Activity.name == "Basketball Team").first()
+        assert activity is not None
+        assert email not in {participant.email for participant in activity.participants}
 
 
 def test_unregister_unknown_activity_returns_404(client):
