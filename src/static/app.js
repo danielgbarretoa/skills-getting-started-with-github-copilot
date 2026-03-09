@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   // UI updates happen on each fetch so cards stay in sync after signup/unregister actions.
   // Keeping this file updated retriggers Step 3 workflow checks when needed.
+  // Step 3 verification touchpoint.
   const activitiesList = document.getElementById("activities-list");
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
